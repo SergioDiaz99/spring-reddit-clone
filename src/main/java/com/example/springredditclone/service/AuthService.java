@@ -1,6 +1,7 @@
 package com.example.springredditclone.service;
 
 import com.example.springredditclone.dto.RegisterRequest;
+import com.example.springredditclone.exceptions.SpringRedditException;
 import com.example.springredditclone.model.NotificationEmail;
 import com.example.springredditclone.model.User;
 import com.example.springredditclone.model.VerificationToken;
@@ -8,11 +9,14 @@ import com.example.springredditclone.repository.UserRepository;
 import com.example.springredditclone.repository.VerificationTokenRepository;
 import lombok.AllArgsConstructor;
 
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
+import javax.validation.constraints.NotBlank;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -36,6 +40,7 @@ public class AuthService {
 
         userRepository.save(user);
         String token = generateVerificationToken(user);
+        
         mailService.sendMail(new NotificationEmail("Please activate your Account",
                 user.getEmail(), "Thank you for signing up to Spring Reddit, "+
                 "please click on the below url to activate your Account : "+
@@ -53,4 +58,18 @@ public class AuthService {
         return token;
     }
 
+    public void verifyAccount(String token) {
+        Optional<VerificationToken> verificationToken = verificationTokenRepository.findByToken(token);
+        verificationToken.orElseThrow(() -> new SpringRedditException("Invalid Token!"));
+        fetchUserAndEnable(verificationToken.get());
+    }
+
+    @Transactional
+    private void fetchUserAndEnable(VerificationToken verificationToken) {
+        @NotBlank(message = "Username is required")
+        String username = verificationToken.getUser().getUsername();
+        User user = userRepository.findByUsername(username).orElseThrow(() -> new SpringRedditException("User " + username + " not found"));
+        user.setEnabled(true);
+        userRepository.save(user);
+    }
 }

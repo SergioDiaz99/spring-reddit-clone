@@ -5,7 +5,9 @@ import com.example.springredditclone.model.NotificationEmail;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.mail.javamail.MimeMessagePreparator;
 import org.springframework.scheduling.annotation.Async;
@@ -16,18 +18,20 @@ import org.springframework.stereotype.Service;
 @Slf4j
 class MailService {
 
-    private final JavaMailSender mailSender;
+    private JavaMailSender mailSender;
     private final MailContentBuilder mailContentBuilder;
 
     @Async
     void sendMail(NotificationEmail notificationEmail)  {
         MimeMessagePreparator messagePreparator = mimeMessage -> {
             MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage);
-            messageHelper.setFrom("springreddit@email.com");
+            messageHelper.setFrom("spring-reddit@gmail.com");
             messageHelper.setTo(notificationEmail.getRecipient());
             messageHelper.setSubject(notificationEmail.getSubject());
-            messageHelper.setText(notificationEmail.getBody());
+            messageHelper.setText(mailContentBuilder.build(notificationEmail.getBody()));
         };
+
+        mailSender = getJavaMailSender();
         try {
             mailSender.send(messagePreparator);
             log.info("Activation email sent!!");
@@ -37,4 +41,13 @@ class MailService {
         }
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    public JavaMailSender getJavaMailSender() {
+        JavaMailSenderImpl mailSenderImpl = new JavaMailSenderImpl();
+        mailSenderImpl.setHost("smtp.mailtrap.io");
+        mailSenderImpl.setPort(2525);
+        mailSenderImpl.setUsername("6fa8c6b2b7f8d1");
+        mailSenderImpl.setPassword("4c180e6b5e0a90");
+        return mailSenderImpl;
+    }
 }
